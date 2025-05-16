@@ -22,7 +22,13 @@ def get_patient_service(db: Session = Depends(get_db)) -> PatientService:
     summary="Создать пациента"
 )
 def create_patient(
-        data: PatientCreate = Body(...),
+        data: PatientCreate = Body(...,
+        example={
+            "full_name": "Иванов Иван Иванович",
+            "birth_date": "1990-05-20",
+            "sex": "male",
+            "place_of_residence": "Москва"
+        }),
         svc: PatientService = Depends(get_patient_service),
 ):
     return svc.create_patient(data)

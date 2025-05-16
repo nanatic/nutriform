@@ -1,31 +1,78 @@
-from typing import List, Optional
-
-from sqlalchemy import ARRAY, BigInteger, CheckConstraint, Date, DateTime, Double, Enum, ForeignKeyConstraint, Integer, Numeric, PrimaryKeyConstraint, Sequence, String, Text, Time, UniqueConstraint, Uuid, text
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 import datetime
 import decimal
 import uuid
+from typing import List, Optional
+
+from sqlalchemy import ARRAY, BigInteger, CheckConstraint, Date, DateTime, Double, Enum, ForeignKeyConstraint, Integer, \
+    Numeric, PrimaryKeyConstraint, Sequence, String, Text, Time, UniqueConstraint, Uuid, text, Boolean, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
 
 class Base(DeclarativeBase):
     pass
 
 
-class BodyMetrics(Base):
-    __tablename__ = 'body_metrics'
+class Anthropometries(Base):
+    __tablename__ = "anthropometries"
     __table_args__ = (
-        PrimaryKeyConstraint('id', name='body_metrics_pkey'),
-        UniqueConstraint('anthropometry_id', name='unq_body_metrics_anthropometry_id')
+        PrimaryKeyConstraint("id", name="anthropometries_pkey"),
+        ForeignKeyConstraint(
+            ["patient_id"],
+            ["patients.id"],
+            ondelete="CASCADE",
+            name="anthropometries_patient_id_fkey",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    height_cm: Mapped[float] = mapped_column(Double)
+    weight_kg: Mapped[float] = mapped_column(Double)
+    measured_at: Mapped[datetime.datetime] = mapped_column(DateTime)
+    patient_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    waist_cm: Mapped[Optional[float]] = mapped_column(Double)
+    hip_cm: Mapped[Optional[float]] = mapped_column(Double)
+
+    patient: Mapped["Patients"] = relationship(
+        "Patients", back_populates="anthropometries"
+    )
+
+    body_metrics: Mapped[Optional["BodyMetrics"]] = relationship(
+        "BodyMetrics",
+        back_populates="anthropometry",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
+
+class BodyMetrics(Base):
+    __tablename__ = "body_metrics"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="body_metrics_pkey"),
+        UniqueConstraint(
+            "anthropometry_id", name="unq_body_metrics_anthropometry_id"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
-    anthropometry_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid)
-    bmi: Mapped[Optional[float]] = mapped_column(Double(53))
-    bsa: Mapped[Optional[float]] = mapped_column(Double(53))
-    ideal_weight: Mapped[Optional[float]] = mapped_column(Double(53))
-    bmr: Mapped[Optional[float]] = mapped_column(Double(53))
+    anthropometry_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("anthropometries.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    bmi: Mapped[Optional[float]] = mapped_column(Double)
+    bsa: Mapped[Optional[float]] = mapped_column(Double)
+    ideal_weight: Mapped[Optional[float]] = mapped_column(Double)
+    bmr: Mapped[Optional[float]] = mapped_column(Double)
     method_bmr: Mapped[Optional[str]] = mapped_column(Text)
     method_bsa: Mapped[Optional[str]] = mapped_column(Text)
+
+    anthropometry: Mapped["Anthropometries"] = relationship(
+        "Anthropometries",
+        back_populates="body_metrics",
+        uselist=False
+    )
 
 
 class FoodGroups(Base):
@@ -39,7 +86,8 @@ class FoodGroups(Base):
     name: Mapped[str] = mapped_column(Text)
 
     food_composition: Mapped[List['FoodComposition']] = relationship('FoodComposition', back_populates='group')
-    questionnaire_questions: Mapped[List['QuestionnaireQuestions']] = relationship('QuestionnaireQuestions', back_populates='food_group')
+    questionnaire_questions: Mapped[List['QuestionnaireQuestions']] = relationship('QuestionnaireQuestions',
+                                                                                   back_populates='food_group')
 
 
 class FoodLogEntries(Base):
@@ -72,13 +120,15 @@ class Patients(Base):
     place_of_residence: Mapped[Optional[str]] = mapped_column(Text)
 
     anthropometries: Mapped[List['Anthropometries']] = relationship('Anthropometries', back_populates='patient')
-    bioimpedance_samples: Mapped[List['BioimpedanceSamples']] = relationship('BioimpedanceSamples', back_populates='patient')
+    bioimpedance_samples: Mapped[List['BioimpedanceSamples']] = relationship('BioimpedanceSamples',
+                                                                             back_populates='patient')
     clinical_histories: Mapped[List['ClinicalHistories']] = relationship('ClinicalHistories', back_populates='patient')
     dietary_histories: Mapped[List['DietaryHistories']] = relationship('DietaryHistories', back_populates='patient')
     food_logs: Mapped[List['FoodLogs']] = relationship('FoodLogs', back_populates='patient')
     meal_plans: Mapped[List['MealPlans']] = relationship('MealPlans', back_populates='patient')
     patient_user_links: Mapped[List['PatientUserLinks']] = relationship('PatientUserLinks', back_populates='patient')
-    questionnaire_submissions: Mapped[List['QuestionnaireSubmissions']] = relationship('QuestionnaireSubmissions', back_populates='patient')
+    questionnaire_submissions: Mapped[List['QuestionnaireSubmissions']] = relationship('QuestionnaireSubmissions',
+                                                                                       back_populates='patient')
 
 
 class Questionnaires(Base):
@@ -92,7 +142,8 @@ class Questionnaires(Base):
     type: Mapped[Optional[str]] = mapped_column(Enum('nutrition', 'physical_activity', name='questionnaire_type'))
     created_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=text('CURRENT_TIMESTAMP'))
 
-    questionnaire_questions: Mapped[List['QuestionnaireQuestions']] = relationship('QuestionnaireQuestions', back_populates='questionnaire')
+    questionnaire_questions: Mapped[List['QuestionnaireQuestions']] = relationship('QuestionnaireQuestions',
+                                                                                   back_populates='questionnaire')
 
 
 class Users(Base):
@@ -112,33 +163,20 @@ class Users(Base):
     position: Mapped[Optional[str]] = mapped_column(Text)
 
     patient_user_links: Mapped[List['PatientUserLinks']] = relationship('PatientUserLinks', back_populates='user')
-    profile_change_requests: Mapped[List['ProfileChangeRequests']] = relationship('ProfileChangeRequests', foreign_keys='[ProfileChangeRequests.reviewed_by]', back_populates='users')
-    profile_change_requests_: Mapped[List['ProfileChangeRequests']] = relationship('ProfileChangeRequests', foreign_keys='[ProfileChangeRequests.user_id]', back_populates='user')
-
-
-class Anthropometries(BodyMetrics):
-    __tablename__ = 'anthropometries'
-    __table_args__ = (
-        ForeignKeyConstraint(['id'], ['body_metrics.anthropometry_id'], name='fk_anthropometries_body_metrics'),
-        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE', name='anthropometries_patient_id_fkey'),
-        PrimaryKeyConstraint('id', name='anthropometries_pkey')
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
-    height_cm: Mapped[float] = mapped_column(Double(53))
-    weight_kg: Mapped[float] = mapped_column(Double(53))
-    measured_at: Mapped[datetime.datetime] = mapped_column(DateTime)
-    patient_id: Mapped[Optional[int]] = mapped_column(BigInteger)
-    waist_cm: Mapped[Optional[float]] = mapped_column(Double(53))
-    hip_cm: Mapped[Optional[float]] = mapped_column(Double(53))
-
-    patient: Mapped[Optional['Patients']] = relationship('Patients', back_populates='anthropometries')
+    profile_change_requests: Mapped[List['ProfileChangeRequests']] = relationship('ProfileChangeRequests',
+                                                                                  foreign_keys='[ProfileChangeRequests.reviewed_by]',
+                                                                                  back_populates='users')
+    profile_change_requests_: Mapped[List['ProfileChangeRequests']] = relationship('ProfileChangeRequests',
+                                                                                   foreign_keys='[ProfileChangeRequests.user_id]',
+                                                                                   back_populates='user')
+    notifications: Mapped[List['Notifications']] = relationship('Notifications', back_populates='user')
 
 
 class BioimpedanceSamples(Base):
     __tablename__ = 'bioimpedance_samples'
     __table_args__ = (
-        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE', name='bioimpedance_samples_patient_id_fkey'),
+        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE',
+                             name='bioimpedance_samples_patient_id_fkey'),
         PrimaryKeyConstraint('id', name='bioimpedance_samples_pkey')
     )
 
@@ -157,7 +195,8 @@ class BioimpedanceSamples(Base):
 class ClinicalHistories(Base):
     __tablename__ = 'clinical_histories'
     __table_args__ = (
-        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE', name='clinical_histories_patient_id_fkey'),
+        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE',
+                             name='clinical_histories_patient_id_fkey'),
         PrimaryKeyConstraint('id', name='clinical_histories_pkey')
     )
 
@@ -174,7 +213,8 @@ class ClinicalHistories(Base):
 class DietaryHistories(Base):
     __tablename__ = 'dietary_histories'
     __table_args__ = (
-        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE', name='dietary_histories_patient_id_fkey'),
+        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE',
+                             name='dietary_histories_patient_id_fkey'),
         PrimaryKeyConstraint('id', name='dietary_histories_pkey')
     )
 
@@ -191,7 +231,8 @@ class DietaryHistories(Base):
 class FoodComposition(Base):
     __tablename__ = 'food_composition'
     __table_args__ = (
-        ForeignKeyConstraint(['group_id'], ['food_groups.id'], ondelete='CASCADE', name='food_composition_group_id_fkey'),
+        ForeignKeyConstraint(['group_id'], ['food_groups.id'], ondelete='CASCADE',
+                             name='food_composition_group_id_fkey'),
         PrimaryKeyConstraint('id', name='food_composition_pkey')
     )
 
@@ -268,8 +309,10 @@ class MealPlans(Base):
 class PatientUserLinks(Base):
     __tablename__ = 'patient_user_links'
     __table_args__ = (
-        CheckConstraint("status = ANY (ARRAY['active'::text, 'inactive'::text])", name='patient_user_links_status_check'),
-        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE', name='patient_user_links_patient_id_fkey'),
+        CheckConstraint("status = ANY (ARRAY['active'::text, 'inactive'::text])",
+                        name='patient_user_links_status_check'),
+        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE',
+                             name='patient_user_links_patient_id_fkey'),
         ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE', name='patient_user_links_user_id_fkey'),
         PrimaryKeyConstraint('user_id', 'patient_id', name='patient_user_links_pkey')
     )
@@ -286,9 +329,11 @@ class PatientUserLinks(Base):
 class ProfileChangeRequests(Base):
     __tablename__ = 'profile_change_requests'
     __table_args__ = (
-        CheckConstraint("status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])", name='profile_change_requests_status_check'),
+        CheckConstraint("status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])",
+                        name='profile_change_requests_status_check'),
         ForeignKeyConstraint(['reviewed_by'], ['users.id'], name='profile_change_requests_reviewed_by_fkey'),
-        ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE', name='profile_change_requests_user_id_fkey'),
+        ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE',
+                             name='profile_change_requests_user_id_fkey'),
         PrimaryKeyConstraint('id', name='profile_change_requests_pkey')
     )
 
@@ -299,15 +344,19 @@ class ProfileChangeRequests(Base):
     requested_fields: Mapped[Optional[dict]] = mapped_column(JSONB)
     reviewed_by: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid)
 
-    users: Mapped[Optional['Users']] = relationship('Users', foreign_keys=[reviewed_by], back_populates='profile_change_requests')
-    user: Mapped[Optional['Users']] = relationship('Users', foreign_keys=[user_id], back_populates='profile_change_requests_')
+    users: Mapped[Optional['Users']] = relationship('Users', foreign_keys=[reviewed_by],
+                                                    back_populates='profile_change_requests')
+    user: Mapped[Optional['Users']] = relationship('Users', foreign_keys=[user_id],
+                                                   back_populates='profile_change_requests_')
 
 
 class QuestionnaireQuestions(Base):
     __tablename__ = 'questionnaire_questions'
     __table_args__ = (
-        ForeignKeyConstraint(['food_group_id'], ['food_groups.id'], ondelete='SET NULL', name='questionnaire_questions_food_group_id_fkey'),
-        ForeignKeyConstraint(['questionnaire_id'], ['questionnaires.id'], ondelete='CASCADE', name='questionnaire_questions_questionnaire_id_fkey'),
+        ForeignKeyConstraint(['food_group_id'], ['food_groups.id'], ondelete='SET NULL',
+                             name='questionnaire_questions_food_group_id_fkey'),
+        ForeignKeyConstraint(['questionnaire_id'], ['questionnaires.id'], ondelete='CASCADE',
+                             name='questionnaire_questions_questionnaire_id_fkey'),
         PrimaryKeyConstraint('id', name='questionnaire_questions_pkey')
     )
 
@@ -321,24 +370,27 @@ class QuestionnaireQuestions(Base):
 
     food_group: Mapped[Optional['FoodGroups']] = relationship('FoodGroups', back_populates='questionnaire_questions')
     questionnaire: Mapped['Questionnaires'] = relationship('Questionnaires', back_populates='questionnaire_questions')
-    questionnaire_answers: Mapped[List['QuestionnaireAnswers']] = relationship('QuestionnaireAnswers', back_populates='question')
+    questionnaire_answers: Mapped[List['QuestionnaireAnswers']] = relationship('QuestionnaireAnswers',
+                                                                               back_populates='question')
 
 
 class QuestionnaireSubmissions(Base):
     __tablename__ = 'questionnaire_submissions'
     __table_args__ = (
-        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE', name='questionnaire_submissions_patient_id_fkey'),
+        ForeignKeyConstraint(['patient_id'], ['patients.id'], ondelete='CASCADE',
+                             name='questionnaire_submissions_patient_id_fkey'),
         PrimaryKeyConstraint('id', name='questionnaire_submissions_pkey')
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     questionnaire_type: Mapped[str] = mapped_column(Text)
-    submitted_at: Mapped[datetime.datetime] = mapped_column(DateTime)
+    submitted_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     patient_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     responses: Mapped[Optional[dict]] = mapped_column(JSONB)
 
     patient: Mapped[Optional['Patients']] = relationship('Patients', back_populates='questionnaire_submissions')
-    questionnaire_answers: Mapped[List['QuestionnaireAnswers']] = relationship('QuestionnaireAnswers', back_populates='submission')
+    questionnaire_answers: Mapped[List['QuestionnaireAnswers']] = relationship('QuestionnaireAnswers',
+                                                                               back_populates='submission')
 
 
 class DayMenus(Base):
@@ -360,21 +412,27 @@ class DayMenus(Base):
 class QuestionnaireAnswers(Base):
     __tablename__ = 'questionnaire_answers'
     __table_args__ = (
-        ForeignKeyConstraint(['question_id'], ['questionnaire_questions.id'], name='fk_questionnaire_answers_questionnaire_questions'),
-        ForeignKeyConstraint(['submission_id'], ['questionnaire_submissions.id'], ondelete='CASCADE', name='questionnaire_answers_submission_id_fkey'),
+        ForeignKeyConstraint(['question_id'], ['questionnaire_questions.id'],
+                             name='fk_questionnaire_answers_questionnaire_questions'),
+        ForeignKeyConstraint(['submission_id'], ['questionnaire_submissions.id'], ondelete='CASCADE',
+                             name='questionnaire_answers_submission_id_fkey'),
         PrimaryKeyConstraint('id', name='questionnaire_answers_pkey')
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     submission_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid)
     question_id: Mapped[Optional[int]] = mapped_column(Integer)
-    frequency_eat: Mapped[Optional[str]] = mapped_column(Enum('never', '1-3 per month', '1 per week', '2-4 per week', '1 per day', '2-3 per day', '4+ per day', name='frequency_type'))
+    frequency_eat: Mapped[Optional[str]] = mapped_column(
+        Enum('never', '1-3 per month', '1 per week', '2-4 per week', '1 per day', '2-3 per day', '4+ per day',
+             name='frequency_type'))
     recorded_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=text('CURRENT_TIMESTAMP'))
     days_per_week: Mapped[Optional[int]] = mapped_column(Integer)
     met_minutes: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(10, 2))
 
-    question: Mapped[Optional['QuestionnaireQuestions']] = relationship('QuestionnaireQuestions', back_populates='questionnaire_answers')
-    submission: Mapped[Optional['QuestionnaireSubmissions']] = relationship('QuestionnaireSubmissions', back_populates='questionnaire_answers')
+    question: Mapped[Optional['QuestionnaireQuestions']] = relationship('QuestionnaireQuestions',
+                                                                        back_populates='questionnaire_answers')
+    submission: Mapped[Optional['QuestionnaireSubmissions']] = relationship('QuestionnaireSubmissions',
+                                                                            back_populates='questionnaire_answers')
 
 
 class Meals(Base):
@@ -391,3 +449,19 @@ class Meals(Base):
     time: Mapped[Optional[datetime.time]] = mapped_column(Time)
 
     day_menu: Mapped[Optional['DayMenus']] = relationship('DayMenus', back_populates='meals')
+
+
+class Notifications(Base):
+    __tablename__ = 'notifications'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey('users.id', ondelete='CASCADE'), nullable=False
+    )
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, server_default=text('CURRENT_TIMESTAMP'), nullable=False
+    )
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    user = relationship('Users', back_populates='notifications')

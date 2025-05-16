@@ -1,13 +1,17 @@
-from typing import List
 import uuid
+from typing import List
 
-from app.domain.repositories.questionnaire_repository_interface import IQuestionnaireRepository
+from sqlalchemy.exc import NoResultFound
+
 from app.domain.models.questionnaire import (
     QuestionnaireCreate, QuestionnaireRead, QuestionnaireUpdate,
     QuestionCreate, QuestionRead, QuestionUpdate,
     SubmissionCreate, SubmissionRead,
-    AnswerCreate, AnswerRead,
-)
+    AnswerCreate, )
+from app.domain.repositories.questionnaire_repository_interface import IQuestionnaireRepository
+
+VALID_TYPES = {"nutrition", "physical_activity"}
+
 
 class QuestionnaireService:
     def __init__(self, repo: IQuestionnaireRepository):
@@ -24,7 +28,13 @@ class QuestionnaireService:
         return self.repo.create_questionnaire(data)
 
     def update_questionnaire(self, questionnaire_id: int, data: QuestionnaireUpdate) -> None:
-        self.repo.update_questionnaire(questionnaire_id, data)
+        if data.type and data.type not in VALID_TYPES:
+            raise ValueError("Invalid questionnaire type provided")
+
+        try:
+            self.repo.update_questionnaire(questionnaire_id, data)
+        except NoResultFound:
+            raise ValueError("Questionnaire not found")
 
     def delete_questionnaire(self, questionnaire_id: int) -> None:
         self.repo.delete_questionnaire(questionnaire_id)

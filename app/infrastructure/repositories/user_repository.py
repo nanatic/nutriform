@@ -10,7 +10,7 @@ from app.domain.models.users import UserUpdate, ProfileChangeRequestCreate
 from app.domain.repositories.user_repository_interface import IUserRepository
 from app.infrastructure.db.models import (
     Users, ProfileChangeRequests, PatientUserLinks, Patients,
-    Anthropometries, QuestionnaireSubmissions
+    Anthropometries, QuestionnaireSubmissions, Notifications
 )
 
 
@@ -121,3 +121,18 @@ class UserRepository(IUserRepository):
             "average_bmi": avg_bmi,
             "total_surveys": surveys or 0
         }
+
+    def list_notifications(self, user_id: uuid.UUID) -> List[Dict[str, Any]]:
+        rows = (
+            self.session.query(Notifications)
+            .filter_by(user_id=user_id)
+            .order_by(Notifications.created_at.desc())
+            .all()
+        )
+        return [r.__dict__ for r in rows]
+
+    # маленький хелпер, чтобы другие сервисы могли создавать уведомления
+    def _create_notification(self, user_id: uuid.UUID, message: str) -> None:
+        note = Notifications(user_id=user_id, message=message)
+        self.session.add(note)
+        self.session.commit()

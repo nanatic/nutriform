@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 from app.domain.repositories.user_repository_interface import IUserRepository
-from app.domain.models.users import UserUpdate, ProfileChangeRequestCreate
+from app.domain.models.users import UserUpdate, ProfileChangeRequestCreate, NotificationRead
 from app.domain.models.patient import PatientRead
 
 
@@ -30,3 +30,7 @@ class UserService:
 
     def stats(self, doctor_id: str, all_patients: bool=False) -> Dict[str, Any]:
         return self.repo.get_patient_stats(doctor_id, all_patients)
+
+    def get_notifications(self, user_id: str) -> list[NotificationRead]:
+        data = self.repo.list_notifications(user_id)
+        return [NotificationRead(**n) for n in data]

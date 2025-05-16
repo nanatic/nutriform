@@ -29,7 +29,7 @@ class QuestionnaireRepository(IQuestionnaireRepository):
 
     def get_questionnaire(self, questionnaire_id: int) -> QuestionnaireRead | None:
         q = self.session.get(Questionnaires, questionnaire_id)
-        return QuestionnaireRead(**q.__dict__) if q else None
+        return q.__dict__ if q else None
 
     def update_questionnaire(self, questionnaire_id: int, data: QuestionnaireUpdate) -> None:
         q = self.session.get(Questionnaires, questionnaire_id)
@@ -45,6 +45,10 @@ class QuestionnaireRepository(IQuestionnaireRepository):
             raise NoResultFound()
         self.session.delete(q)
         self.session.commit()
+
+    def list_questionnaires(self) -> List[Dict[str, Any]]:
+        qs = self.session.query(Questionnaires).all()
+        return [q.__dict__ for q in qs]
 
     # — вопросы —
     def create_question(self, data: QuestionCreate) -> int:
@@ -121,6 +125,7 @@ class QuestionnaireRepository(IQuestionnaireRepository):
         return [s.__dict__ for s in subs]
 
     def add_answer(self, submission_id: uuid.UUID, question_id: int, answer_data: Dict[str, Any]) -> int:
+        answer_data.pop("question_id", None)
         ans = QuestionnaireAnswers(submission_id=submission_id, question_id=question_id, **answer_data)
         self.session.add(ans)
         self.session.commit()

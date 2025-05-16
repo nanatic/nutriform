@@ -21,6 +21,7 @@ class PatientRepository(AbstractPatientRepository):
             id=new_id,
             full_name=data.full_name,
             birth_date=data.birth_date,
+            sex=data.sex.value,
             place_of_residence=data.place_of_residence
         )
         self.session.add(patient)

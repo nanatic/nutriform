@@ -1,5 +1,6 @@
 import uuid
-from typing import Any, Dict, Optional
+from enum import Enum
+from typing import Dict, Any, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +48,7 @@ class QuestionRead(BaseModel):
     questionnaire_id: int = Field(..., description="Идентификатор опросника")
     question_text: str = Field(..., description="Текст вопроса")
     question_order: Optional[int] = Field(None, description="Порядок отображения вопроса")
-    answers_json: Optional[Dict[str, Any]] = Field(None, description="Возможные ответы в формате JSON")
+    answers_json: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None
     food_group_id: Optional[int] = Field(None, description="ID группы продуктов")
     portion_description: Optional[str] = Field(None, description="Описание порции")
 
@@ -76,11 +77,21 @@ class SubmissionRead(BaseModel):
     responses: Dict[str, Any] = Field(..., example={"q1": "a", "q2": "b"}, description="Ответы пациента")
 
 
+class FrequencyEnum(str, Enum):
+    never = 'never'
+    m1_3 = '1-3 per month'
+    w1 = '1 per week'
+    w2_4 = '2-4 per week'
+    d1 = '1 per day'
+    d2_3 = '2-3 per day'
+    d4p = '4+ per day'
+
+
 class AnswerCreate(BaseModel):
     question_id: int = Field(..., example=10, description="ID вопроса")
     days_per_week: Optional[int] = Field(None, example=3, description="Количество дней в неделю (если применимо)")
     met_minutes: Optional[float] = Field(None, example=150.0, description="Количество MET-минут (если применимо)")
-    frequency_eat: Optional[str] = Field(None, example="Ежедневно", description="Частота употребления продукта")
+    frequency_eat: Optional[FrequencyEnum] = Field(None, example="Ежедневно", description="Частота употребления продукта")
 
 
 class AnswerRead(BaseModel):
