@@ -16,7 +16,7 @@ def get_service(db: Session = Depends(get_db)) -> BodyMetricsService:
     "/patients/{patient_id}/anthropometries/",
     response_model=uuid.UUID,
     status_code=status.HTTP_201_CREATED,
-    summary="Добавить антропометрию"
+    summary="Добавить антропометрию и пересчитать метрики"
 )
 def add_anthropometry(
     patient_id: int,
@@ -25,12 +25,18 @@ def add_anthropometry(
         example={
             "height_cm": 170.0,
             "weight_kg": 65.3,
-            "measured_at": "2025-05-14T10:30:00Z"
+            "measured_at": "2025-05-14T10:30:00Z",
+            "waist_cm": 78.5,
+            "hip_cm": 95.0
         }
     ),
     svc: BodyMetricsService = Depends(get_service),
 ):
+    """
+    Создаёт запись антропометрии, автоматически пересчитывает и сохраняет метрики.
+    """
     return svc.add_anthropometry(patient_id, data)
+
 
 @router.get(
     "/patients/{patient_id}/anthropometries/latest",

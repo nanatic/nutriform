@@ -387,6 +387,7 @@ class QuestionnaireSubmissions(Base):
     submitted_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     patient_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     responses: Mapped[Optional[dict]] = mapped_column(JSONB)
+    total_met_minutes: Mapped[Optional[float]] = mapped_column(Double)
 
     patient: Mapped[Optional['Patients']] = relationship('Patients', back_populates='questionnaire_submissions')
     questionnaire_answers: Mapped[List['QuestionnaireAnswers']] = relationship('QuestionnaireAnswers',

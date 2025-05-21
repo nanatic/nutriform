@@ -107,13 +107,13 @@ def waist_status(waist_cm: float, sex: Sex) -> str:
         if waist_cm <= 94:
             return "Норма"
         if waist_cm <= 102:
-            return "Профилактика набора веса"
+            return "Профилактика предотвращения набора веса"
         return "Коррекция массы"
     else:
         if waist_cm <= 80:
             return "Норма"
         if waist_cm <= 88:
-            return "Профилактика набора веса"
+            return "Профилактика предотвращения набора веса"
         return "Коррекция массы"
 
 

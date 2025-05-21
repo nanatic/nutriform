@@ -75,6 +75,7 @@ class SubmissionRead(BaseModel):
     patient_id: int = Field(..., example=123, description="ID пациента")
     questionnaire_type: str = Field(..., example="nutrition", description="Тип опросника")
     responses: Dict[str, Any] = Field(..., example={"q1": "a", "q2": "b"}, description="Ответы пациента")
+    total_met_minutes: Optional[float] = Field(None, description="Суммарные MET-минуты в неделю")
 
 
 class FrequencyEnum(str, Enum):

@@ -14,7 +14,7 @@ from app.domain.models.questionnaire import (
     QuestionCreate, QuestionUpdate, QuestionnaireRead, QuestionRead
 )
 from app.domain.repositories.questionnaire_repository_interface import IQuestionnaireRepository
-
+from app.services.met_calculator import update_submission_met_minutes
 
 class QuestionnaireRepository(IQuestionnaireRepository):
     def __init__(self, session: Session):
@@ -128,5 +128,13 @@ class QuestionnaireRepository(IQuestionnaireRepository):
         answer_data.pop("question_id", None)
         ans = QuestionnaireAnswers(submission_id=submission_id, question_id=question_id, **answer_data)
         self.session.add(ans)
+        self.session.flush()  # сразу получить ID
+
+        # 🔁 после добавления — обновляем total MET
+        submission = self.session.get(QuestionnaireSubmissions, submission_id)
+        if submission:
+            all_answers = submission.questionnaire_answers
+            update_submission_met_minutes(self.session, submission_id, all_answers)
+
         self.session.commit()
         return ans.id
